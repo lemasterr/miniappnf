@@ -11,20 +11,35 @@
   <body>
     <main class="shell">
       <section class="hero">
-        <div class="hero-top">
-          <div>
-            <div class="eyebrow">Nodeflow Remote</div>
-            <h1>Telegram Mini App</h1>
+        <div class="hero-grid">
+          <div class="brand-chip">
+            <div class="brand-mark">N</div>
+            <div class="brand-copy">
+              <div class="eyebrow">Nodeflow Remote</div>
+              <h1>Mini Control</h1>
+            </div>
           </div>
           <div class="hero-pills">
-            <span class="hero-pill">Snapshot</span>
-            <span class="hero-pill">Remote</span>
-            <span class="hero-pill">Secure</span>
+            <span class="hero-pill">Live Snapshot</span>
+            <span class="hero-pill">Bot Bridge</span>
+            <span class="hero-pill">Mobile Control</span>
           </div>
         </div>
-        <p>
-          Compact remote surface for runs, downloads, cleanup and live session context inside Telegram.
-        </p>
+        <div class="hero-top">
+          <div class="hero-copy">
+            <div class="hero-lead">Compact Telegram surface for remote control, health checks and quick recovery actions.</div>
+          </div>
+          <div class="hero-band">
+            <div class="hero-stat">
+              <span>Flow</span>
+              <strong>Run / Download</strong>
+            </div>
+            <div class="hero-stat">
+              <span>Sync</span>
+              <strong>Bot + Desktop</strong>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section class="grid metrics-grid" id="metrics"></section>
@@ -41,39 +56,66 @@
         <div class="hint">Use this for <code>run</code> and <code>download</code>. The value is stored locally in the Mini App.</div>
       </section>
 
-      <section class="grid">
-        <button class="action primary" data-action="run">
-          <span class="action-label">Run Workflow</span>
-          <span class="action-sub">Start profile pipeline</span>
-        </button>
-        <button class="action" data-action="download">
-          <span class="action-label">Downloads</span>
-          <span class="action-sub">Run download stage</span>
-        </button>
-        <button class="action" data-action="status">
-          <span class="action-label">Status</span>
-          <span class="action-sub">Health and progress</span>
-        </button>
-        <button class="action" data-action="last">
-          <span class="action-label">Last Video</span>
-          <span class="action-sub">Send latest export</span>
-        </button>
-        <button class="action warn" data-action="pause">
-          <span class="action-label">Pause</span>
-          <span class="action-sub">Freeze tracked tabs</span>
-        </button>
-        <button class="action" data-action="resume">
-          <span class="action-label">Resume</span>
-          <span class="action-sub">Reactivate tabs</span>
-        </button>
-        <button class="action" data-action="clean">
-          <span class="action-label">Cleanup</span>
-          <span class="action-sub">Run retention rules</span>
-        </button>
-        <button class="action danger" data-action="stop">
-          <span class="action-label">Emergency Stop</span>
-          <span class="action-sub">Kill active runtime</span>
-        </button>
+      <section class="card compact action-shell">
+        <div class="section-title">Command Grid</div>
+        <div class="grid action-grid">
+          <button class="action primary" data-action="run">
+            <span class="action-icon">▶</span>
+            <span class="action-copy">
+              <span class="action-label">Run Workflow</span>
+              <span class="action-sub">Start profile pipeline</span>
+            </span>
+          </button>
+          <button class="action" data-action="download">
+            <span class="action-icon">↓</span>
+            <span class="action-copy">
+              <span class="action-label">Downloads</span>
+              <span class="action-sub">Run download stage</span>
+            </span>
+          </button>
+          <button class="action" data-action="status">
+            <span class="action-icon">◎</span>
+            <span class="action-copy">
+              <span class="action-label">Status</span>
+              <span class="action-sub">Health and progress</span>
+            </span>
+          </button>
+          <button class="action" data-action="last">
+            <span class="action-icon">▣</span>
+            <span class="action-copy">
+              <span class="action-label">Last Video</span>
+              <span class="action-sub">Send latest export</span>
+            </span>
+          </button>
+          <button class="action warn" data-action="pause">
+            <span class="action-icon">❚❚</span>
+            <span class="action-copy">
+              <span class="action-label">Pause</span>
+              <span class="action-sub">Freeze tracked tabs</span>
+            </span>
+          </button>
+          <button class="action" data-action="resume">
+            <span class="action-icon">↻</span>
+            <span class="action-copy">
+              <span class="action-label">Resume</span>
+              <span class="action-sub">Reactivate tabs</span>
+            </span>
+          </button>
+          <button class="action" data-action="clean">
+            <span class="action-icon">✦</span>
+            <span class="action-copy">
+              <span class="action-label">Cleanup</span>
+              <span class="action-sub">Run retention rules</span>
+            </span>
+          </button>
+          <button class="action danger" data-action="stop">
+            <span class="action-icon">⨯</span>
+            <span class="action-copy">
+              <span class="action-label">Emergency Stop</span>
+              <span class="action-sub">Kill active runtime</span>
+            </span>
+          </button>
+        </div>
       </section>
 
       <section class="card compact">
