@@ -29,14 +29,14 @@ body {
 }
 
 body {
-  padding: 14px;
+  padding: 10px;
 }
 
 .shell {
   max-width: 720px;
   margin: 0 auto;
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .hero,
@@ -48,15 +48,17 @@ body {
 }
 
 .hero {
-  padding: 16px 16px 14px;
-}
-
-.card {
+  position: relative;
+  overflow: hidden;
   padding: 14px;
 }
 
+.card {
+  padding: 12px;
+}
+
 .card.compact {
-  padding-top: 12px;
+  padding-top: 10px;
 }
 
 .eyebrow {
@@ -68,8 +70,8 @@ body {
 }
 
 h1 {
-  margin: 6px 0 0;
-  font-size: 24px;
+  margin: 4px 0 0;
+  font-size: 22px;
   line-height: 1.02;
 }
 
@@ -80,12 +82,44 @@ p {
   font-size: 13px;
 }
 
+.hero-grid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.brand-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+  border: 1px solid rgba(95, 225, 255, 0.24);
+  background: linear-gradient(180deg, rgba(25, 34, 46, 0.98), rgba(10, 14, 20, 0.98));
+  color: var(--cyan);
+  font-size: 18px;
+  font-weight: 800;
+  box-shadow: 0 10px 30px rgba(20, 111, 155, 0.18);
+}
+
+.brand-copy {
+  min-width: 0;
+}
+
 .hero-top {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 10px;
+  margin-top: 12px;
 }
 
 .hero-pills {
@@ -106,6 +140,47 @@ p {
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.hero-copy {
+  min-width: 0;
+}
+
+.hero-lead {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  max-width: 360px;
+}
+
+.hero-band {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.hero-stat {
+  min-width: 112px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(86, 102, 122, 0.2);
+  background: rgba(7, 11, 16, 0.72);
+}
+
+.hero-stat span {
+  display: block;
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.hero-stat strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text);
 }
 
 .label,
@@ -138,7 +213,7 @@ p {
 
 .hint,
 .list {
-  margin: 8px 0 0;
+  margin: 6px 0 0;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.55;
@@ -154,6 +229,15 @@ p {
   gap: 8px;
 }
 
+.action-shell {
+  display: grid;
+  gap: 8px;
+}
+
+.action-grid {
+  gap: 7px;
+}
+
 .metrics-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
@@ -162,32 +246,54 @@ p {
   border: 1px solid var(--border);
   background: linear-gradient(180deg, rgba(15, 20, 28, 0.98), rgba(8, 11, 16, 0.98));
   color: var(--text);
-  border-radius: 16px;
-  min-height: 54px;
-  padding: 11px 12px;
-  font-size: 14px;
+  border-radius: 14px;
+  min-height: 50px;
+  padding: 10px 11px;
+  font-size: 13px;
   font-weight: 700;
   transition: transform 180ms cubic-bezier(.2,.8,.2,1), border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
   text-align: left;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: flex-start;
-  justify-content: center;
-  gap: 4px;
+  justify-content: flex-start;
+  gap: 10px;
 }
 
 .action:active {
   transform: scale(0.98);
 }
 
+.action-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-top: 1px;
+  border-radius: 9px;
+  background: rgba(95, 225, 255, 0.1);
+  color: var(--cyan);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.action-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
 .action-label {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
   line-height: 1.1;
 }
 
 .action-sub {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--muted);
   font-weight: 500;
   line-height: 1.2;
@@ -207,8 +313,8 @@ p {
 }
 
 .status {
-  padding: 10px 12px;
-  border-radius: 14px;
+  padding: 9px 11px;
+  border-radius: 13px;
   border: 1px solid var(--border);
   background: rgba(10, 16, 23, 0.92);
   color: var(--muted);
@@ -218,8 +324,8 @@ p {
 .metric-card {
   border: 1px solid var(--border);
   background: linear-gradient(180deg, rgba(16, 23, 32, 0.98), rgba(8, 11, 16, 0.98));
-  border-radius: 18px;
-  padding: 12px;
+  border-radius: 16px;
+  padding: 11px;
 }
 
 .metric-label {
@@ -231,15 +337,15 @@ p {
 }
 
 .metric-value {
-  margin-top: 8px;
-  font-size: 21px;
+  margin-top: 7px;
+  font-size: 18px;
   font-weight: 800;
 }
 
 .metric-sub {
-  margin-top: 4px;
+  margin-top: 3px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .session-list {
@@ -251,8 +357,8 @@ p {
 .session-card {
   border: 1px solid var(--border);
   background: rgba(8, 12, 18, 0.86);
-  border-radius: 16px;
-  padding: 11px 12px;
+  border-radius: 14px;
+  padding: 10px 11px;
 }
 
 .session-head {
@@ -263,7 +369,7 @@ p {
 }
 
 .session-name {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -292,9 +398,9 @@ p {
 }
 
 .session-msg {
-  margin-top: 7px;
+  margin-top: 6px;
   color: var(--text);
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.4;
 }
 
@@ -314,9 +420,19 @@ code {
 
   .hero-top {
     flex-direction: column;
+    align-items: flex-start;
   }
 
   .hero-pills {
+    justify-content: flex-start;
+  }
+
+  .hero-grid {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .hero-band {
     justify-content: flex-start;
   }
 }
