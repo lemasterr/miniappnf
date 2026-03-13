@@ -2,6 +2,9 @@ const tg = window.Telegram?.WebApp;
 const profileInput = document.getElementById('profile');
 const statusEl = document.getElementById('status');
 const buttons = Array.from(document.querySelectorAll('[data-action]'));
+const metricsEl = document.getElementById('metrics');
+const snapshotMetaEl = document.getElementById('snapshot-meta');
+const sessionListEl = document.getElementById('session-list');
 
 const STORAGE_KEY = 'nodeflow-miniapp-profile';
 
@@ -64,8 +67,112 @@ function sendAction(action) {
   setStatus(`Sent "${action}" to the bot. Telegram will return the result as a chat message.`, 'success');
 }
 
+function formatBytes(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let value = bytes;
+  let index = 0;
+  while (value >= 1024 && index < units.length - 1) {
+    value /= 1024;
+    index += 1;
+  }
+  return `${value.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+}
+
+function decodeSnapshot() {
+  const params = new URLSearchParams(window.location.search);
+  const rawState = params.get('state');
+  if (!rawState) return null;
+  try {
+    const json = atob(rawState.replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+function renderMetrics(snapshot) {
+  if (!snapshot || !metricsEl) return;
+  const metrics = [
+    {
+      label: 'Prompts Left',
+      value: snapshot.totals?.promptCount ?? 0,
+      sub: `${snapshot.totals?.sessions ?? 0} sessions`,
+    },
+    {
+      label: 'Downloads',
+      value: snapshot.totals?.downloadedCount ?? 0,
+      sub: `${snapshot.totals?.activeTasks ?? 0} active tasks`,
+    },
+    {
+      label: 'CPU',
+      value: `${snapshot.resources?.cpu ?? 0}%`,
+      sub: formatBytes(snapshot.resources?.ramUsed ?? 0),
+    },
+    {
+      label: 'Checkpoint',
+      value: snapshot.checkpoint?.active
+        ? `${snapshot.checkpoint?.completedSteps ?? 0}/${snapshot.checkpoint?.totalSteps ?? 0}`
+        : 'Idle',
+      sub: snapshot.checkpoint?.status || 'idle',
+    },
+  ];
+
+  metricsEl.innerHTML = metrics.map((metric) => `
+    <div class="metric-card">
+      <div class="metric-label">${metric.label}</div>
+      <div class="metric-value">${metric.value}</div>
+      <div class="metric-sub">${metric.sub}</div>
+    </div>
+  `).join('');
+}
+
+function renderSessions(snapshot) {
+  if (!sessionListEl || !snapshotMetaEl) return;
+
+  if (!snapshot) {
+    snapshotMetaEl.textContent = 'Open via /miniapp to load the latest desktop snapshot.';
+    sessionListEl.innerHTML = '';
+    return;
+  }
+
+  const generatedAt = snapshot.generatedAt ? new Date(snapshot.generatedAt) : null;
+  snapshotMetaEl.textContent = generatedAt
+    ? `Snapshot captured at ${generatedAt.toLocaleTimeString()}. Reopen with /miniapp to refresh.`
+    : 'Snapshot loaded.';
+
+  const sessions = Array.isArray(snapshot.sessions) ? snapshot.sessions : [];
+  if (sessions.length === 0) {
+    sessionListEl.innerHTML = '<div class="hint">No session data in the current snapshot.</div>';
+    return;
+  }
+
+  sessionListEl.innerHTML = sessions.map((session) => {
+    const total = Number(session.progressTotal || 0);
+    const current = Number(session.progressCurrent || 0);
+    const progressPercent = total > 0 ? Math.max(0, Math.min(100, Math.round((current / total) * 100))) : 0;
+    return `
+      <div class="session-card">
+        <div class="session-head">
+          <div class="session-name">${session.name}</div>
+          <div class="metric-sub">${total > 0 ? `${current}/${total}` : 'idle'}</div>
+        </div>
+        <div class="session-kpis">
+          <span>${session.promptCount || 0} prompts</span>
+          <span>${session.downloadedCount || 0} downloads</span>
+        </div>
+        ${total > 0 ? `<div class="progress-line"><span style="width:${progressPercent}%"></span></div>` : ''}
+        <div class="session-msg">${session.message || 'Idle'}</div>
+      </div>
+    `;
+  }).join('');
+}
+
 function boot() {
   loadProfile();
+  const snapshot = decodeSnapshot();
+  renderMetrics(snapshot);
+  renderSessions(snapshot);
 
   if (!tg) {
     setStatus('Open this page from the Telegram bot launcher to use the Mini App.', 'error');
