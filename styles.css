@@ -328,6 +328,10 @@ p {
   padding: 11px;
 }
 
+.metric-progress {
+  grid-column: 1 / -1;
+}
+
 .metric-label {
   font-size: 10px;
   letter-spacing: 0.16em;
@@ -340,6 +344,14 @@ p {
   margin-top: 7px;
   font-size: 18px;
   font-weight: 800;
+}
+
+.metric-progress-head {
+  margin-top: 7px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .metric-sub {
@@ -388,6 +400,12 @@ p {
   background: rgba(255, 255, 255, 0.06);
   overflow: hidden;
   margin-top: 9px;
+}
+
+.progress-line-strong {
+  height: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(95, 225, 255, 0.1);
 }
 
 .progress-line > span {
