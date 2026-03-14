@@ -8,6 +8,7 @@ const sessionListEl = document.getElementById('session-list');
 
 const STORAGE_KEY = 'nodeflow-miniapp-profile';
 const API_STORAGE_KEY = 'nodeflow-miniapp-api';
+const SNAPSHOT_STORAGE_KEY = 'nodeflow-miniapp-last-snapshot';
 const SNAPSHOT_POLL_MS = 15000;
 let snapshotPollTimer = null;
 
@@ -70,6 +71,24 @@ function saveApiUrl(apiUrl) {
   } catch {}
 }
 
+function saveSnapshot(snapshot) {
+  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) return;
+  try {
+    localStorage.setItem(SNAPSHOT_STORAGE_KEY, JSON.stringify(snapshot));
+  } catch {}
+}
+
+function loadStoredSnapshot() {
+  try {
+    const raw = localStorage.getItem(SNAPSHOT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 function sendAction(action) {
   if (!tg) {
     setStatus('Telegram WebApp SDK is unavailable. Open this page from Telegram.', 'error');
@@ -116,7 +135,9 @@ function decodeSnapshot() {
   if (!rawState) return null;
   try {
     const json = atob(rawState.replace(/-/g, '+').replace(/_/g, '/'));
-    return JSON.parse(json);
+    const parsed = JSON.parse(json);
+    saveSnapshot(parsed);
+    return parsed;
   } catch {
     return null;
   }
@@ -139,8 +160,45 @@ function unwrapSnapshotPayload(payload) {
   return payload;
 }
 
+function getSnapshotProgress(snapshot) {
+  if (!snapshot || typeof snapshot !== 'object') return null;
+
+  const sessions = Array.isArray(snapshot.sessions) ? snapshot.sessions : [];
+  const activeSessions = sessions.filter((session) => Number(session.progressTotal || 0) > 0);
+  if (activeSessions.length > 0) {
+    const total = activeSessions.reduce((sum, session) => sum + Number(session.progressTotal || 0), 0);
+    const current = activeSessions.reduce((sum, session) => sum + Number(session.progressCurrent || 0), 0);
+    const percent = total > 0 ? Math.max(0, Math.min(100, Math.round((current / total) * 100))) : 0;
+    return {
+      label: 'Session Progress',
+      current,
+      total,
+      percent,
+    };
+  }
+
+  const checkpointTotal = Number(snapshot.checkpoint?.totalSteps || 0);
+  const checkpointCurrent = Number(snapshot.checkpoint?.completedSteps || 0);
+  if (checkpointTotal > 0) {
+    const percent = Math.max(0, Math.min(100, Math.round((checkpointCurrent / checkpointTotal) * 100)));
+    return {
+      label: 'Workflow Progress',
+      current: checkpointCurrent,
+      total: checkpointTotal,
+      percent,
+    };
+  }
+
+  return null;
+}
+
 function renderMetrics(snapshot) {
-  if (!snapshot || !metricsEl) return;
+  if (!metricsEl) return;
+  if (!snapshot) {
+    metricsEl.innerHTML = '';
+    return;
+  }
+
   const metrics = [
     {
       label: 'Prompts Left',
@@ -166,13 +224,27 @@ function renderMetrics(snapshot) {
     },
   ];
 
+  const progress = getSnapshotProgress(snapshot);
+  const progressMarkup = progress ? `
+    <div class="metric-card metric-progress">
+      <div class="metric-label">${progress.label}</div>
+      <div class="metric-progress-head">
+        <div class="metric-value">${progress.percent}%</div>
+        <div class="metric-sub">${progress.current}/${progress.total}</div>
+      </div>
+      <div class="progress-line progress-line-strong">
+        <span style="width:${progress.percent}%"></span>
+      </div>
+    </div>
+  ` : '';
+
   metricsEl.innerHTML = metrics.map((metric) => `
     <div class="metric-card">
       <div class="metric-label">${metric.label}</div>
       <div class="metric-value">${metric.value}</div>
       <div class="metric-sub">${metric.sub}</div>
     </div>
-  `).join('');
+  `).join('') + progressMarkup;
 }
 
 function renderSessions(snapshot) {
@@ -240,15 +312,32 @@ function startSnapshotPolling() {
     try {
       const snapshot = await fetchLiveSnapshot(apiUrl);
       if (snapshot) {
+        saveSnapshot(snapshot);
         renderMetrics(snapshot);
         renderSessions(snapshot);
         setStatus('Live runtime snapshot synced from public API.', 'success');
       } else {
-        snapshotMetaEl.textContent = 'Public API is reachable, but no desktop snapshot has been published yet.';
+        const cachedSnapshot = loadStoredSnapshot();
+        if (cachedSnapshot) {
+          renderMetrics(cachedSnapshot);
+          renderSessions(cachedSnapshot);
+          snapshotMetaEl.textContent = 'Live API is reachable, but no fresh desktop snapshot has been published yet. Showing the last cached runtime snapshot.';
+          setStatus('Showing last cached snapshot while waiting for the desktop publisher.', 'success');
+        } else {
+          snapshotMetaEl.textContent = 'Public API is reachable, but no desktop snapshot has been published yet. Check that Nodeflow is running, Public Snapshot is enabled, and WRITE_SECRET matches the Worker secret.';
+        }
       }
     } catch (error) {
-      snapshotMetaEl.textContent = `Public API sync failed: ${error.message}`;
-      setStatus('Public snapshot API is configured but not responding.', 'error');
+      const cachedSnapshot = loadStoredSnapshot();
+      if (cachedSnapshot) {
+        renderMetrics(cachedSnapshot);
+        renderSessions(cachedSnapshot);
+        snapshotMetaEl.textContent = `Public API sync failed: ${error.message}. Showing the last cached snapshot instead.`;
+        setStatus('Using cached runtime snapshot while the public API is unavailable.', 'error');
+      } else {
+        snapshotMetaEl.textContent = `Public API sync failed: ${error.message}`;
+        setStatus('Public snapshot API is configured but not responding.', 'error');
+      }
     }
   };
 
@@ -261,7 +350,7 @@ function startSnapshotPolling() {
 
 function boot() {
   loadProfile();
-  const snapshot = decodeSnapshot();
+  const snapshot = decodeSnapshot() || loadStoredSnapshot();
   renderMetrics(snapshot);
   renderSessions(snapshot);
   startSnapshotPolling();
@@ -290,3 +379,4 @@ function boot() {
 }
 
 boot();
+
