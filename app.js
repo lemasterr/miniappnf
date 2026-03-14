@@ -7,6 +7,9 @@ const snapshotMetaEl = document.getElementById('snapshot-meta');
 const sessionListEl = document.getElementById('session-list');
 
 const STORAGE_KEY = 'nodeflow-miniapp-profile';
+const API_STORAGE_KEY = 'nodeflow-miniapp-api';
+const SNAPSHOT_POLL_MS = 15000;
+let snapshotPollTimer = null;
 
 function setStatus(message, tone) {
   statusEl.textContent = message;
@@ -36,6 +39,34 @@ function loadProfile() {
     if (value) {
       profileInput.value = value;
     }
+  } catch {}
+}
+
+function normalizeApiUrl(rawValue) {
+  const value = (rawValue || '').trim();
+  if (!value) return null;
+
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:') return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function loadStoredApiUrl() {
+  try {
+    return normalizeApiUrl(localStorage.getItem(API_STORAGE_KEY));
+  } catch {
+    return null;
+  }
+}
+
+function saveApiUrl(apiUrl) {
+  if (!apiUrl) return;
+  try {
+    localStorage.setItem(API_STORAGE_KEY, apiUrl);
   } catch {}
 }
 
@@ -91,6 +122,23 @@ function decodeSnapshot() {
   }
 }
 
+function resolveSnapshotApiUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const fromQuery = normalizeApiUrl(params.get('api'));
+  if (fromQuery) {
+    saveApiUrl(fromQuery);
+    return fromQuery;
+  }
+  return loadStoredApiUrl();
+}
+
+function unwrapSnapshotPayload(payload) {
+  if (payload && typeof payload === 'object' && !Array.isArray(payload) && 'snapshot' in payload) {
+    return payload.snapshot;
+  }
+  return payload;
+}
+
 function renderMetrics(snapshot) {
   if (!snapshot || !metricsEl) return;
   const metrics = [
@@ -131,7 +179,7 @@ function renderSessions(snapshot) {
   if (!sessionListEl || !snapshotMetaEl) return;
 
   if (!snapshot) {
-    snapshotMetaEl.textContent = 'Open via /miniapp to load the latest desktop snapshot.';
+    snapshotMetaEl.textContent = 'Open via /miniapp or connect the public snapshot API to load runtime state.';
     sessionListEl.innerHTML = '';
     return;
   }
@@ -168,11 +216,55 @@ function renderSessions(snapshot) {
   }).join('');
 }
 
+async function fetchLiveSnapshot(apiUrl) {
+  const response = await fetch(apiUrl, {
+    cache: 'no-store',
+    headers: {
+      Accept: 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Snapshot API returned HTTP ${response.status}`);
+  }
+
+  const payload = await response.json();
+  return unwrapSnapshotPayload(payload);
+}
+
+function startSnapshotPolling() {
+  const apiUrl = resolveSnapshotApiUrl();
+  if (!apiUrl) return;
+
+  const run = async () => {
+    try {
+      const snapshot = await fetchLiveSnapshot(apiUrl);
+      if (snapshot) {
+        renderMetrics(snapshot);
+        renderSessions(snapshot);
+        setStatus('Live runtime snapshot synced from public API.', 'success');
+      } else {
+        snapshotMetaEl.textContent = 'Public API is reachable, but no desktop snapshot has been published yet.';
+      }
+    } catch (error) {
+      snapshotMetaEl.textContent = `Public API sync failed: ${error.message}`;
+      setStatus('Public snapshot API is configured but not responding.', 'error');
+    }
+  };
+
+  void run();
+  snapshotPollTimer = window.setInterval(() => {
+    if (document.visibilityState === 'hidden') return;
+    void run();
+  }, SNAPSHOT_POLL_MS);
+}
+
 function boot() {
   loadProfile();
   const snapshot = decodeSnapshot();
   renderMetrics(snapshot);
   renderSessions(snapshot);
+  startSnapshotPolling();
 
   if (!tg) {
     setStatus('Open this page from the Telegram bot launcher to use the Mini App.', 'error');
