@@ -12,7 +12,8 @@ const presetListEl = document.getElementById('preset-list');
 const STORAGE_KEY = 'nodeflow-miniapp-profile';
 const API_STORAGE_KEY = 'nodeflow-miniapp-api';
 const SNAPSHOT_STORAGE_KEY = 'nodeflow-miniapp-last-snapshot';
-const SNAPSHOT_POLL_MS = 30000;
+const SNAPSHOT_POLL_MS = 10000;
+const STALE_SNAPSHOT_MS = 15 * 60 * 1000;
 let snapshotPollTimer = null;
 let snapshotPollInFlight = false;
 
@@ -82,12 +83,45 @@ function saveSnapshot(snapshot) {
   } catch {}
 }
 
+function clearStoredSnapshot() {
+  try {
+    localStorage.removeItem(SNAPSHOT_STORAGE_KEY);
+  } catch {}
+}
+
+function getSnapshotTimestamp(snapshot) {
+  if (!snapshot || typeof snapshot !== 'object') return null;
+  const direct = snapshot.generatedAt ? Date.parse(snapshot.generatedAt) : NaN;
+  if (Number.isFinite(direct) && direct > 0) return direct;
+
+  const sessions = Array.isArray(snapshot.sessions) ? snapshot.sessions : [];
+  const sessionTimestamps = sessions
+    .map((session) => Date.parse(session?.updatedAt || session?.timestamp || ''))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  if (sessionTimestamps.length > 0) {
+    return Math.max(...sessionTimestamps);
+  }
+
+  return null;
+}
+
+function isSnapshotStale(snapshot) {
+  const timestamp = getSnapshotTimestamp(snapshot);
+  if (!timestamp) return false;
+  return Date.now() - timestamp > STALE_SNAPSHOT_MS;
+}
+
 function loadStoredSnapshot() {
   try {
     const raw = localStorage.getItem(SNAPSHOT_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+    if (isSnapshotStale(parsed)) {
+      clearStoredSnapshot();
+      return null;
+    }
+    return parsed;
   } catch {
     return null;
   }
@@ -170,6 +204,10 @@ function decodeSnapshot() {
   try {
     const json = atob(rawState.replace(/-/g, '+').replace(/_/g, '/'));
     const parsed = JSON.parse(json);
+    if (isSnapshotStale(parsed)) {
+      clearStoredSnapshot();
+      return null;
+    }
     saveSnapshot(parsed);
     return parsed;
   } catch {
@@ -292,8 +330,8 @@ function renderSessions(snapshot) {
 
   const generatedAt = snapshot.generatedAt ? new Date(snapshot.generatedAt) : null;
   snapshotMetaEl.textContent = generatedAt
-    ? `Snapshot captured at ${generatedAt.toLocaleTimeString()}. Auto-refresh checks run every 30 seconds while this Mini App stays open.`
-    : 'Snapshot loaded. Live refresh checks run every 30 seconds while this Mini App stays open.';
+    ? `Snapshot captured at ${generatedAt.toLocaleTimeString()}. Auto-refresh checks run every 10 seconds while this Mini App stays open.`
+    : 'Snapshot loaded. Live refresh checks run every 10 seconds while this Mini App stays open.';
 
   const sessions = Array.isArray(snapshot.sessions) ? snapshot.sessions : [];
   if (sessions.length === 0) {
@@ -452,7 +490,7 @@ function startSnapshotPolling() {
     snapshotPollInFlight = true;
     try {
       const snapshot = await fetchLiveSnapshot(apiUrl);
-      if (snapshot) {
+      if (snapshot && !isSnapshotStale(snapshot)) {
         saveSnapshot(snapshot);
         renderMetrics(snapshot);
         renderSessions(snapshot);
@@ -471,7 +509,7 @@ function startSnapshotPolling() {
           snapshotMetaEl.textContent = 'Live API is reachable, but no fresh desktop snapshot has been published yet. Showing the last cached runtime snapshot.';
           setStatus('Showing last cached snapshot while waiting for the desktop publisher.', 'success');
         } else {
-          snapshotMetaEl.textContent = 'Public API is reachable, but no desktop snapshot has been published yet. Live sync checks every 30 seconds. Check that Nodeflow is running, Public Snapshot is enabled, and WRITE_SECRET matches the Worker secret.';
+          snapshotMetaEl.textContent = 'Public API is reachable, but no fresh desktop snapshot has been published yet. Live sync checks every 10 seconds. Check that Nodeflow is running, Public Snapshot is enabled, and WRITE_SECRET matches the Worker secret.';
         }
       }
     } catch (error) {
