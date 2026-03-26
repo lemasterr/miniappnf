@@ -14,6 +14,7 @@ const API_STORAGE_KEY = 'nodeflow-miniapp-api';
 const SNAPSHOT_STORAGE_KEY = 'nodeflow-miniapp-last-snapshot';
 const SNAPSHOT_POLL_MS = 10000;
 const STALE_SNAPSHOT_MS = 15 * 60 * 1000;
+const DEFAULT_PUBLIC_API_URL = 'https://nodeflow-remote-api.nekit230107.workers.dev/snapshot';
 let snapshotPollTimer = null;
 let snapshotPollInFlight = false;
 
@@ -222,7 +223,7 @@ function resolveSnapshotApiUrl() {
     saveApiUrl(fromQuery);
     return fromQuery;
   }
-  return loadStoredApiUrl();
+  return loadStoredApiUrl() || normalizeApiUrl(DEFAULT_PUBLIC_API_URL);
 }
 
 function unwrapSnapshotPayload(payload) {
@@ -339,30 +340,41 @@ function renderSessions(snapshot) {
     return;
   }
 
-  sessionListEl.innerHTML = sessions.map((session) => {
+  const scoredSessions = sessions
+    .map((session) => {
+      const total = Number(session.progressTotal || 0);
+      const current = Number(session.progressCurrent || 0);
+      const active = total > 0 || Boolean(session.activeAction) || Boolean(session.timerDurationMs) || Boolean(session.message && session.message !== 'Idle');
+      return {
+        session,
+        score: active ? 1000 + total + current : Number(session.downloadedCount || 0),
+      };
+    })
+    .sort((left, right) => right.score - left.score || String(left.session.name || '').localeCompare(String(right.session.name || '')));
+
+  const visibleSessions = scoredSessions.slice(0, 4).map((item) => item.session);
+  const hiddenCount = Math.max(0, sessions.length - visibleSessions.length);
+
+  sessionListEl.innerHTML = visibleSessions.map((session) => {
     const total = Number(session.progressTotal || 0);
     const current = Number(session.progressCurrent || 0);
     const progressPercent = total > 0 ? Math.max(0, Math.min(100, Math.round((current / total) * 100))) : 0;
     const timerDuration = Number(session.timerDurationMs || 0);
     const timerRemaining = Number(session.timerRemainingMs || 0);
     const timerPercent = timerDuration > 0 ? Math.max(0, Math.min(100, Math.round(((timerDuration - timerRemaining) / timerDuration) * 100))) : 0;
+    const host = formatTargetHost(session.targetUrl);
+    const activeBits = [
+      session.activeAction || '',
+      host || '',
+      total > 0 ? `${current}/${total}` : '',
+    ].filter(Boolean).join(' · ');
     return `
       <div class="session-card" data-session-name="${String(session.name || '').replace(/"/g, '&quot;')}">
         <div class="session-head">
           <div class="session-name">${session.name}</div>
-          <div class="metric-sub">${total > 0 ? `${current}/${total}` : 'idle'}</div>
+          <div class="metric-sub">${timerDuration > 0 ? `${Math.ceil(timerRemaining / 1000)}s` : total > 0 ? `${progressPercent}%` : 'idle'}</div>
         </div>
-        <div class="session-kpis">
-          <span>${session.promptCount || 0} prompts</span>
-          <span>${session.downloadedCount || 0} downloads</span>
-        </div>
-        ${(session.activeAction || session.selectorId) ? `
-          <div class="session-detail-row">
-            ${session.activeAction ? `<span class="session-chip">${session.activeAction}</span>` : ''}
-            ${session.selectorId ? `<span class="session-chip session-chip-mono">${session.selectorId}</span>` : ''}
-            ${session.targetUrl ? `<span class="session-chip">${formatTargetHost(session.targetUrl)}</span>` : ''}
-          </div>
-        ` : ''}
+        ${activeBits ? `<div class="session-kpis"><span>${activeBits}</span></div>` : ''}
         ${total > 0 ? `<div class="progress-line"><span style="width:${progressPercent}%"></span></div>` : ''}
         ${timerDuration > 0 ? `
           <div class="session-timer">
@@ -377,6 +389,10 @@ function renderSessions(snapshot) {
       </div>
     `;
   }).join('');
+
+  if (hiddenCount > 0) {
+    sessionListEl.innerHTML += `<div class="hint">Showing 4 most relevant sessions. ${hiddenCount} more are hidden to keep the Mini App compact.</div>`;
+  }
 
   Array.from(sessionListEl.querySelectorAll('[data-session-name]')).forEach((card) => {
     card.addEventListener('click', () => {
